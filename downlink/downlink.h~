@@ -1,0 +1,87 @@
+/*
+* Copyright (C) 2014 Viking Motorsport Team (VMS)
+*
+* This file is part of VMS Battery Management System.
+*
+* VMS Battery Management System is free software; you can redistribute 
+* it and/or modify it under the terms of the GNU General Public License
+* as published by the Free Software Foundation; either version 2,
+* or (at your option) any later version.
+*
+* VMS Battery Management System is distributed in the hope that
+* it will be useful, but WITHOUT ANY WARRANTY; without even
+* the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+* See the GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with paparazzi; see the file COPYING. If not, write to
+* the Free Software Foundation, 59 Temple Place - Suite 330,
+* Boston, MA 02111-1307, USA.
+*/
+
+/**
+* @file downlink/downlink.h
+*
+* Telemetry for BMS
+*/
+#ifndef DOWNLINK_H
+#define DOWNLINK_H
+
+#include "mbed.h"
+#include "BmsState.h"
+#include "led.h"
+
+#include "mlec_can.h"
+
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <sstream>
+#include <stdint.h>
+
+#define DOWNLINK_BAUDRATE 9600//115200
+#define DEBUGLINK_BAUDRATE 115200
+//#define DEBUGLINK_BAUDRATE 9600
+#define DOWNLINK_BUFFER_SIZE 128
+
+extern Serial debuglink;
+
+void downlink_init(void);
+void downlink_event(void);
+void downlink_periodic(void);
+
+void downlink_parse(char);
+void downlink_process_cmd(void);
+
+void debuglink_print_rlec(struct RLECModule*);
+
+string toHexString(uint8_t f);
+string toHexString(uint16_t f);
+
+extern AnalogOut acc_out;
+extern AnalogIn throttle1; //s1
+extern AnalogIn throttle2; //s2
+
+extern DigitalIn brake_en;
+extern DigitalIn ksi;
+
+int16_t boundNumberShort(int16_t num, int16_t lower, int16_t upper);
+uint16_t boundNumberUnsigShort(uint16_t num, uint16_t lower, uint16_t upper);
+uint8_t boundNumberUnsigByte(uint8_t num, uint8_t lower, uint8_t upper);
+
+//debug
+extern bool throttle_ok;
+extern float epsilon;
+extern bool init;
+extern int counter;
+extern float fsig1, fsig2,delta;
+
+extern char logname[];
+extern FILE *fp;
+
+enum DownlinkState {
+  DataMode,
+  ATAttempt,
+  ATMode
+};
+#endif /* DOWNLINK_H */

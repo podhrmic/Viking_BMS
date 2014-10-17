@@ -29,6 +29,10 @@
 *.x86_64
 *.hex
 
+# Binaries
+*.bin
+*.bld
+
 # Symbol files
 *.elf
 
