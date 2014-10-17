@@ -39,7 +39,7 @@
 #endif
 
 #ifndef TELEMETRY_FREQUENCY
-#define TELEMETRY_FREQUENCY 1.0
+#define TELEMETRY_FREQUENCY 2.0
 #endif
 
 #ifndef MODULES_FREQUENCY

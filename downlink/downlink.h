@@ -44,8 +44,20 @@
 
 #define DOWNLINK_BAUDRATE 9600//115200
 #define DEBUGLINK_BAUDRATE 115200
-//#define DEBUGLINK_BAUDRATE 9600
+#define TELEMETRY_BAUDRATE 57600
+
 #define DOWNLINK_BUFFER_SIZE 128
+#define TELEMETRY_BUFFER_SIZE 128
+
+/*
+ * Message headers
+ */
+#define TELEMETRY_MSG0 0x21
+#define TELEMETRY_MSG1 0x3F
+
+/* Data offset */
+#define TELEMETRY_SIZE_IDX 2
+#define TELEMETRY_DATA_IDX 4
 
 extern Serial debuglink;
 
