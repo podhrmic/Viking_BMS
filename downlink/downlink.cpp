@@ -43,8 +43,10 @@ AnalogIn throttle2(p17); //s2
 AnalogIn charge_current(p15);
 
 Serial debuglink(USBTX, USBRX);
+//Serial debuglink(p13, p14);
 Serial torquelink(p28, p27); 
 Serial telemetrylink(p13, p14);
+//Serial telemetrylink(USBTX, USBRX);
 SDFileSystem sd(p5, p6, p7, p8, "sd");
 FILE *fp;
 
@@ -165,8 +167,12 @@ void downlink_init(void){
 				"MotorAngle, MotorSpeed, InvFreq, ResAng, PhasCur1, PhasCur2, PhasCur3, DcCur, DcVolt, OutputVolt, PabVolt, PbcVolt,"
 				"FluxCmd, FluxFb, IdFb, IqFb, IdCmd, IqCmd, Ref15, Ref25, Ref50, Sys12V, VSMstate, InvState, RelayState, InvMode, InvCmd, InvEn,"
 				"Direction, Fault1, Fault2, Fault3, Fault4, Fault5, Fault6, Fault7, Fault8, ModIdx, FluxRegOut, ThrottleIn1, ThrottleIn2, ThrottleOut"
+				"MinCellTemp, MaxCellTemp, MinCellVolt, MaxCellVolt"
 				"\n");
 		fclose(fp);
+	}
+	else {
+		debuglink.printf("SD card error!\r\n");
 	}
 
 	LED_ON(led_telemetry);
@@ -179,29 +185,64 @@ void downlink_periodic(void){
 	LED_TOGGLE(led_telemetry);
 
 	// Debug
-	debuglink.printf("Uptime: %i sec.\r\n", bms.up_time);
+	//debuglink.printf("Uptime: %f sec.\r\n", (float)bms.up_time/10);
+	bms.max_cell_temp = 0;
+	bms.min_cell_temp = 100;
+	bms.max_cell_volt = 0;
+	bms.min_cell_volt = -1;
 
 	for (int i=0;i<NUM_RLECS;i++){
 		if (mlec.rlecsX[i].status == Active) {
 			debuglink.printf(">>> RLEC_ %i\r\n", i);
 			debuglink_print_rlec(&(mlec.rlecsX[i]));
 			debuglink.printf("\r\n");
+
+			// check max cell temp
+			if (mlec.rlecsX[i].max_cell_temp > bms.max_cell_temp) {
+				bms.max_cell_temp = mlec.rlecsX[i].max_cell_temp;
+			}
+
+			// check min cell temp
+			if (mlec.rlecsX[i].min_cell_temp < bms.min_cell_temp) {
+				bms.min_cell_temp = mlec.rlecsX[i].min_cell_temp;
+			}
+
+			// check max cell voltage
+			if (mlec.rlecsX[i].max_cell_volt > bms.max_cell_volt) {
+				bms.max_cell_volt = mlec.rlecsX[i].max_cell_volt;
+			}
+
+			// check min cell voltage
+			if (mlec.rlecsX[i].min_cell_volt < bms.min_cell_volt) {
+				bms.min_cell_volt = mlec.rlecsX[i].min_cell_volt;
+			}
 		}
 	}
+	debuglink.printf("Min cell tmp %i\r\n",bms.min_cell_temp);
+	debuglink.printf("Max cell tmp %i\r\n",bms.max_cell_temp);
+	debuglink.printf("Min cell volt %f\r\n",(float)bms.min_cell_volt*RLEC_CAN_VOLTAGE_MULT);
+	debuglink.printf("Max cell volt %f\r\n",(float)bms.max_cell_volt*RLEC_CAN_VOLTAGE_MULT);
 	debuglink.printf("\r\n");
 
 	// Print BMS values
+	/*
 	debuglink.printf("DC voltage: %i [V]\r\n", bms.dc_voltage/10);
 	debuglink.printf("DC current: %i [A]\r\n", bms.dc_current/10);
 	debuglink.printf("battery voltage: %i [V]\r\n", bms.sys_12v/100);
 	debuglink.printf("board_temp: %i [C]\r\n", bms.board_temp/10);
 	debuglink.printf("vsm_state: %i \r\n", bms.vsm_state);
 	debuglink.printf("inv_state: %i \r\n", bms.inv_state);
+	debuglink.printf("HLIM: %i \r\n", hlim.read());
 	debuglink.printf("\r\n");
 	debuglink.printf("\r\n");
 	debuglink.printf("\r\n");
+	*/
+}
 
-
+/**
+ * Telemetry periodic
+ */
+void telemetry_periodic(void){
 	// Telenetry
 	static uint8_t cksum0, cksum1;
 	static uint16_t idx;
@@ -219,32 +260,66 @@ void downlink_periodic(void){
 	// put int data
 
 	//uptime uint16_t
+	//uint16_t xxx = 0xABCD;
 	for (uint8_t i = 0; i<2; i++){
 		tx_buf[idx] = 0xFF&(bms.up_time>>(i*8));
+		//tx_buf[idx] = 0xFF&(xxx>>(i*8));
 		idx++;
 	}
 
 	// DC current - dc_current, int16_t
+	//xxx = 0x1234;
 	for (uint8_t i = 0; i<2; i++){
 		tx_buf[idx] = 0xFF&(bms.dc_current>>(i*8));
+		//tx_buf[idx] = 0xFF&(xxx>>(i*8));
 		idx++;
 	}
 
 	// RPM - motor_speed, int16_t
+	//xxx = 0x1A2A;
 	for (uint8_t i = 0; i<2; i++){
 		tx_buf[idx] = 0xFF&(bms.motor_speed>>(i*8));
+		//tx_buf[idx] = 0xFF&(xxx>>(i*8));
 		idx++;
 	}
 
 	// DC Voltage - dc_voltage, int16_t
+	//xxx = 0xACDC;
 	for (uint8_t i = 0; i<2; i++){
 		tx_buf[idx] = 0xFF&(bms.dc_voltage>>(i*8));
+		//tx_buf[idx] = 0xFF&(xxx>>(i*8));
 		idx++;
 	}
 
 	// torque_fb - estimated motor torque, int16_t
+	//xxx = 0x4554;
 	for (uint8_t i = 0; i<2; i++){
 		tx_buf[idx] = 0xFF&(bms.torque_fb>>(i*8));
+		//tx_buf[idx] = 0xFF&(xxx>>(i*8));
+		idx++;
+	}
+
+	// min cell temp
+	tx_buf[idx] = bms.min_cell_temp;
+	idx++;
+
+	// max cell temp
+	tx_buf[idx] = bms.max_cell_temp;
+	idx++;
+
+	// min cell voltage, uint16_t
+	//xxx = 0x4554;
+	for (uint8_t i = 0; i<2; i++){
+		tx_buf[idx] = 0xFF&(bms.min_cell_volt>>(i*8));
+		//tx_buf[idx] = 0xFF&(xxx>>(i*8));
+		idx++;
+	}
+
+	// max cell voltage, uint16_t
+	//xxx = 0x4554;
+	for (uint8_t i = 0; i<2; i++){
+		tx_buf[idx] = 0xFF&(bms.max_cell_volt>>(i*8));
+		//tx_buf[idx] = 0xFF&(xxx>>(i*8));
 		idx++;
 	}
 
@@ -255,14 +330,13 @@ void downlink_periodic(void){
 	}
 
 	// calculate checksum & send
-	// telemetry_cksum(idx, tx_buf, &cksum0, &cksum1);
 	static uint8_t c0, c1;
 	static uint16_t i;//, size;
 	c0 = 0;
 	c1 = 0;
 
-	//Start at byte five so the header is not part of the checksum
-	for ( i = TELEMETRY_DATA_IDX; i < idx; i++ ) {
+	//Start at byte three so MSG0 and MSG1 is not part of the checksum
+	for ( i = TELEMETRY_DATA_IDX-2; i < idx; i++ ) {
 		c0 += (uint8_t)tx_buf[i];
 		c1 += c0;
 	}
@@ -289,6 +363,7 @@ void downlink_event(void){
 	// USB serial
 	if(debuglink.readable()) {
 		c = debuglink.getc();
+		/*
 		if (c == 'a') mlec.rlecsX[15].faults = 0x1;
 		if (c == 'b') mlec.rlecsX[15].faults = 0x2;
 		if (c == 'c') mlec.rlecsX[15].faults = 0x4;
@@ -298,6 +373,17 @@ void downlink_event(void){
 		if (c == 'g') mlec.rlecsX[15].faults = 0x40;
 		if (c == 'h') mlec.rlecsX[15].faults = 0x80;
 		if (c == 'i') mlec.rlecsX[15].faults = 0x0;
+		*/
+		switch (c) {
+			case 'a':
+				hlim.write(0);
+				break;
+			case 'b':
+				mlec.rlecsX[15].faults = 0x1;
+				break;
+			default:
+				break;
+		}
 		debuglink.printf(">%c\n", c);
 	}
 

@@ -39,7 +39,11 @@
 #endif
 
 #ifndef TELEMETRY_FREQUENCY
-#define TELEMETRY_FREQUENCY 2.0
+#define TELEMETRY_FREQUENCY 10.0
+#endif
+
+#ifndef DOWNLINK_FREQUENCY
+#define DOWNLINK_FREQUENCY 1.0
 #endif
 
 #ifndef MODULES_FREQUENCY
@@ -47,9 +51,16 @@
 #endif
 
 #ifndef FAILSAFE_FREQUENCY
-#define FAILSAFE_FREQUENCY 100.0
+#define FAILSAFE_FREQUENCY 10.0
 #endif
 
+#ifndef HEARTBEAT_FREQUENCY
+#define HEARTBEAT_FREQUENCY 10.0
+#endif
+
+#ifndef DATALOG_FREQUENCY
+#define DATALOG_FREQUENCY 1.0
+#endif
 
 bool throttle_ok;
 float epsilon;
@@ -61,14 +72,18 @@ float fsig1, fsig2, delta;
 Ticker heartbeat_tic;
 Ticker failsafe_tic;
 Ticker telemetry_tic;
+Ticker downlink_tic;
 Ticker can_tic;
 Ticker charger_tic;
+Ticker datalog_tic;
 
 // Ticker flags
 uint8_t flag_heartbeat;
 uint8_t flag_failsafe;
 uint8_t flag_telemetry;
+uint8_t flag_downlink;
 uint8_t flag_can;
+uint8_t flag_datalog;
 
 // IO pins
 //lov_v - p24
@@ -87,6 +102,8 @@ DigitalIn ksi(p11);
 float s1;
 float s2;
 float out;
+
+
 
 /**
  * Heartbeat
@@ -134,14 +151,23 @@ inline void handle_periodic_tasks(void){
         failsafe_periodic();
         flag_failsafe = 0;
     }
-    if (flag_telemetry) {
+    if (flag_downlink) {
         downlink_periodic();
+        flag_downlink = 0;
+    }
+    if (flag_telemetry) {
+        telemetry_periodic();
         flag_telemetry = 0;
     }
     if (flag_can) {
         can_periodic_rlecs();
         can_periodic_rms();
         flag_can = 0;
+    }
+
+    if (flag_datalog) {
+        datalog_periodic();
+        flag_datalog = 0;
     }
 }
 
@@ -192,12 +218,16 @@ inline void main_init(void) {
     flag_heartbeat = 0;
     flag_failsafe = 0;
     flag_telemetry = 0;
+    flag_downlink = 0;
     flag_can = 0;
+    flag_datalog = 0;
     
-    heartbeat_tic.attach(&heartbeat_tid, 1.0);
+    heartbeat_tic.attach(&heartbeat_tid, 1.0/HEARTBEAT_FREQUENCY);
     can_tic.attach(&can_tid, 1.0/CAN_FREQUENCY); // can_bms.cpp
     telemetry_tic.attach(&telemetry_tid,1.0/TELEMETRY_FREQUENCY);
+    downlink_tic.attach(&downlink_tid,1.0/DOWNLINK_FREQUENCY);
     failsafe_tic.attach(&failsafe_tid,1.0/FAILSAFE_FREQUENCY); 
+    datalog_tic.attach(&datalog_tid, 1.0/DATALOG_FREQUENCY);
 }
 
 /**
@@ -212,6 +242,83 @@ inline void main_event(void) {
     
     // datalink/serial rx
     downlink_event(); // downlink.cpp
+}
+
+/**
+ * Datalogging
+ */
+inline void datalog_periodic(void){
+    // File log
+    fp = fopen(logname, "a");
+    if(fp != NULL) {
+   	 //debuglink.printf("Writting, time=%f\r\n",(float)bms.up_time/10);
+//   	 printf(fp, "%u, %u,%i, %i, %i,%i, %i, %i, %i, %i, %i, %i,%i,%i, %i, %i,%i, %i, %i, %i,%u, %u, %u, %u, %u, %u,%i, %i, %i, %i,%i, %i, %i,%i,%i, %i, %i, %i,%i, %i, %i, %i, %i, %i,%i, %i, %i, %i,%u, %u, %u, %u, %u, %u, %u,%u, %u, %u, %u, %u, %u, %u, %u,%i, %i,%f, %f, %f",bms.timer, bms.up_time,bms.phase_temp[0],bms.phase_temp[1],bms.phase_temp[2],bms.gate_temp, bms.board_temp, bms.rtd_temp[0],bms.rtd_temp[1],bms.rtd_temp[2],bms.rtd_temp[3],bms.rtd_temp[4],bms.motor_temp,bms.torque_shud, bms.torque_cmd,bms.torque_fb,bms.analog_in[0], bms.analog_in[1], bms.analog_in[2], bms.analog_in[3],bms.digital_in[0], bms.digital_in[1], bms.digital_in[2], bms.digital_in[3], bms.digital_in[4], bms.digital_in[5],bms.motor_angle, bms.motor_speed, bms.inv_freq, bms.resolver_angle,bms.phase_current[0], bms.phase_current[1], bms.phase_current[2], bms.dc_current,bms.dc_voltage, bms.output_volt, bms.p_ab_volt, bms.p_bc_volt,bms.flux_cmd, bms.flux_fb, bms.id_fb, bms.iq_fb, bms.id_cmd, bms.iq_cmd,bms.ref_1_5, bms.ref_2_5, bms.ref_5_0, bms.sys_12v,bms.vsm_state, bms.inv_state, bms.relay_state, bms.inv_mode, bms.inv_cmd, bms.inv_enable, bms.direction,bms.faults[0],bms.faults[1],bms.faults[2],bms.faults[3],bms.faults[4],bms.faults[5],bms.faults[6],bms.faults[7],bms.modulation_index, bms.flux_reg_out,
+//   			 s1,s2,out);
+        //fprintf(fp, "%f, %f, %f, %f\n", (float)(bms.timer*0.03), s1, s2, out);
+        //debuglink.printf("Written\n");
+   	 	 	 //timer
+   			 //fprintf(fp, "%u, %u",bms.timer, bms.up_time);
+
+   	 	 	 //timer, uptime
+   	 fprintf(fp, "%f, %f,"
+   			 // phase temp
+   			 "%i, %i, %i,"
+   			 // temps   rtd temp				motor temp
+   			 "%i, %i,  	%i, %i, %i, %i, %i,		%i,"
+   			 // torque
+   			 "%i, %i, %i,"
+   			 // analog in
+   			 "%i, %i, %i, %i,"
+   			// digitalin
+   			 "%u, %u, %u, %u, %u, %u,"
+   			 //motor info
+   			 "%i, %i, %i, %i,"
+   			 //current
+   			 "%i, %i, %i, 	%i,"
+   			 // Voltage
+   			 "%i, %i, %i, %i,"
+   			 // Flux
+   			 "%i, %i, %i, %i, %i, %i,"
+   			 // Internal Voltages
+   			 "%i, %i, %i, %i,"
+   			 //States
+   			 "%u, %u, %u, %u, %u, %u, %u,"
+   			 // Faults (8bytes)
+   			 "%u, %u, %u, %u, %u, %u, %u, %u,"
+   			 //Various
+   			 "%i, %i,"
+   			 // Throttle input, min cell temp, max cell temp, min cell volt
+   			 "%f, %f, %f, %i, %i, %u, %u\n",
+   			 (float)bms.timer, (float)bms.up_time/10,
+   			 bms.phase_temp[0],bms.phase_temp[1],bms.phase_temp[2],
+   			 bms.gate_temp, bms.board_temp, bms.rtd_temp[0],bms.rtd_temp[1],bms.rtd_temp[2],bms.rtd_temp[3],bms.rtd_temp[4],bms.motor_temp,
+   			 bms.torque_shud, bms.torque_cmd,bms.torque_fb,
+   			 bms.analog_in[0], bms.analog_in[1], bms.analog_in[2], bms.analog_in[3],
+   			 bms.digital_in[0], bms.digital_in[1], bms.digital_in[2], bms.digital_in[3], bms.digital_in[4], bms.digital_in[5],
+   			 bms.motor_angle, bms.motor_speed, bms.inv_freq, bms.resolver_angle,
+   			 bms.phase_current[0], bms.phase_current[1], bms.phase_current[2], bms.dc_current,
+   			 bms.dc_voltage, bms.output_volt, bms.p_ab_volt, bms.p_bc_volt,
+   			 bms.flux_cmd, bms.flux_fb, bms.id_fb, bms.iq_fb, bms.id_cmd, bms.iq_cmd,
+   			 bms.ref_1_5, bms.ref_2_5, bms.ref_5_0, bms.sys_12v,
+   			 bms.vsm_state, bms.inv_state, bms.relay_state, bms.inv_mode, bms.inv_cmd, bms.inv_enable, bms.direction,
+   			 bms.faults[0],bms.faults[1],bms.faults[2],bms.faults[3],bms.faults[4],bms.faults[5],bms.faults[6],bms.faults[7],
+   			 bms.modulation_index, bms.flux_reg_out,
+   			 s1,s2,out, bms.min_cell_temp, bms.max_cell_temp, bms.min_cell_volt, bms.max_cell_volt);
+
+
+//   	 printf(fp, "%u, %u,	%i, %i, %i,		%i, %i,  	%i, %i, %i, %i, %i,		%i, 		%i, %i, %i, 	%i, %i, %i, %i,"
+//   			 "%u, %u, %u, %u, %u, %u,"
+//   			 "%i, %i, %i, %i,		%i, %i, %i, 	%i,"
+//   			 "%i, %i, %i, %i,"
+//   			 "%i, %i, %i, %i, %i, %i,%i, %i, %i, %i, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %i, %i, %f, %f, %f");
+
+
+        fclose(fp);
+
+    }
+    else {
+   	 //debuglink.printf("Not writing, time=%f\r\n",(float)bms.up_time/10);
+    }
 }
 
 /**
@@ -308,7 +415,9 @@ inline void failsafe_periodic(void) {
             if (mlec.rlecsX[i].min_cell_volt < MIN_CELL_VOLT) {
                 //batcritical_warning();
             	failsafe_shutdown();
-                debuglink.printf("Minimal voltage reached - shutting down.\r\n");  
+                debuglink.printf("Minimal voltage reached - shutting down.\r\n");
+                debuglink.printf("RLEC %i\r\n",i);
+                debuglink.printf("Min voltage: %f\r\n",(float)mlec.rlecsX[i].min_cell_volt*0.00244);
             }
             // warning if cell below low threshold
             else if (mlec.rlecsX[i].min_cell_volt < BAT_LOW) {
@@ -328,81 +437,16 @@ inline void failsafe_periodic(void) {
             }
         }
     }
-
-     // File log
-     fp = fopen(logname, "a");
-     if(fp != NULL) {
- //   	 printf(fp, "%u, %u,%i, %i, %i,%i, %i, %i, %i, %i, %i, %i,%i,%i, %i, %i,%i, %i, %i, %i,%u, %u, %u, %u, %u, %u,%i, %i, %i, %i,%i, %i, %i,%i,%i, %i, %i, %i,%i, %i, %i, %i, %i, %i,%i, %i, %i, %i,%u, %u, %u, %u, %u, %u, %u,%u, %u, %u, %u, %u, %u, %u, %u,%i, %i,%f, %f, %f",bms.timer, bms.up_time,bms.phase_temp[0],bms.phase_temp[1],bms.phase_temp[2],bms.gate_temp, bms.board_temp, bms.rtd_temp[0],bms.rtd_temp[1],bms.rtd_temp[2],bms.rtd_temp[3],bms.rtd_temp[4],bms.motor_temp,bms.torque_shud, bms.torque_cmd,bms.torque_fb,bms.analog_in[0], bms.analog_in[1], bms.analog_in[2], bms.analog_in[3],bms.digital_in[0], bms.digital_in[1], bms.digital_in[2], bms.digital_in[3], bms.digital_in[4], bms.digital_in[5],bms.motor_angle, bms.motor_speed, bms.inv_freq, bms.resolver_angle,bms.phase_current[0], bms.phase_current[1], bms.phase_current[2], bms.dc_current,bms.dc_voltage, bms.output_volt, bms.p_ab_volt, bms.p_bc_volt,bms.flux_cmd, bms.flux_fb, bms.id_fb, bms.iq_fb, bms.id_cmd, bms.iq_cmd,bms.ref_1_5, bms.ref_2_5, bms.ref_5_0, bms.sys_12v,bms.vsm_state, bms.inv_state, bms.relay_state, bms.inv_mode, bms.inv_cmd, bms.inv_enable, bms.direction,bms.faults[0],bms.faults[1],bms.faults[2],bms.faults[3],bms.faults[4],bms.faults[5],bms.faults[6],bms.faults[7],bms.modulation_index, bms.flux_reg_out,
- //   			 s1,s2,out);
-         //fprintf(fp, "%f, %f, %f, %f\n", (float)(bms.timer*0.03), s1, s2, out);
-         //debuglink.printf("Written\n");
-    	 	 	 //timer
-    			 //fprintf(fp, "%u, %u",bms.timer, bms.up_time);
-
-    	 	 	 //timer, uptime
-    	 fprintf(fp, "%f, %u,"
-    			 // phase temp
-    			 "%i, %i, %i,"
-    			 // temps   rtd temp				motor temp
-    			 "%i, %i,  	%i, %i, %i, %i, %i,		%i,"
-    			 // torque
-    			 "%i, %i, %i,"
-    			 // analog in
-    			 "%i, %i, %i, %i,"
-    			// digitalin
-    			 "%u, %u, %u, %u, %u, %u,"
-    			 //motor info
-    			 "%i, %i, %i, %i,"
-    			 //current
-    			 "%i, %i, %i, 	%i,"
-    			 // Voltage
-    			 "%i, %i, %i, %i,"
-    			 // Flux
-    			 "%i, %i, %i, %i, %i, %i,"
-    			 // Internal Voltages
-    			 "%i, %i, %i, %i,"
-    			 //States
-    			 "%u, %u, %u, %u, %u, %u, %u,"
-    			 // Faults (8bytes)
-    			 "%u, %u, %u, %u, %u, %u, %u, %u,"
-    			 //Various
-    			 "%i, %i,"
-    			 // Throttle input
-    			 "%f, %f, %f\n",
-    			 (float)bms.timer, bms.up_time,
-    			 bms.phase_temp[0],bms.phase_temp[1],bms.phase_temp[2],
-    			 bms.gate_temp, bms.board_temp, bms.rtd_temp[0],bms.rtd_temp[1],bms.rtd_temp[2],bms.rtd_temp[3],bms.rtd_temp[4],bms.motor_temp,
-    			 bms.torque_shud, bms.torque_cmd,bms.torque_fb,
-    			 bms.analog_in[0], bms.analog_in[1], bms.analog_in[2], bms.analog_in[3],
-    			 bms.digital_in[0], bms.digital_in[1], bms.digital_in[2], bms.digital_in[3], bms.digital_in[4], bms.digital_in[5],
-    			 bms.motor_angle, bms.motor_speed, bms.inv_freq, bms.resolver_angle,
-    			 bms.phase_current[0], bms.phase_current[1], bms.phase_current[2], bms.dc_current,
-    			 bms.dc_voltage, bms.output_volt, bms.p_ab_volt, bms.p_bc_volt,
-    			 bms.flux_cmd, bms.flux_fb, bms.id_fb, bms.iq_fb, bms.id_cmd, bms.iq_cmd,
-    			 bms.ref_1_5, bms.ref_2_5, bms.ref_5_0, bms.sys_12v,
-    			 bms.vsm_state, bms.inv_state, bms.relay_state, bms.inv_mode, bms.inv_cmd, bms.inv_enable, bms.direction,
-    			 bms.faults[0],bms.faults[1],bms.faults[2],bms.faults[3],bms.faults[4],bms.faults[5],bms.faults[6],bms.faults[7],
-    			 bms.modulation_index, bms.flux_reg_out,
-    			 s1,s2,out);
-
-
- //   	 printf(fp, "%u, %u,	%i, %i, %i,		%i, %i,  	%i, %i, %i, %i, %i,		%i, 		%i, %i, %i, 	%i, %i, %i, %i,"
- //   			 "%u, %u, %u, %u, %u, %u,"
- //   			 "%i, %i, %i, %i,		%i, %i, %i, 	%i,"
- //   			 "%i, %i, %i, %i,"
- //   			 "%i, %i, %i, %i, %i, %i,%i, %i, %i, %i, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %i, %i, %f, %f, %f");
-         fclose(fp);
-     }
 }
 
 
 
 /*
- * Charger stop (HLIM high)
- * HLIM: 0=ON, 1=OFF
+ * Charger stop (HLIM low)
+ * HLIM: 1=ON, 0=OFF
  */
 inline void charger_shutdown( void ) {
-    hlim = 1;    
+    hlim.write(0); // HACK: disables HV circuit (as well as charger)
 }
 
 /*
@@ -415,6 +459,8 @@ inline void failsafe_shutdown( void ) {
     wait_ms(100); // give some time to remove current from AIRs
 
 	llim = 0; // disable AIR
+
+	hlim.write(0); // HACK: disables HV circuit
 
 	failsafe_warning(); // light up LED
 }
@@ -463,12 +509,20 @@ void telemetry_tid(void){
     flag_telemetry = 1;
 }
 
+void downlink_tid(void){
+    flag_downlink = 1;
+}
+
 void heartbeat_tid(void){
     flag_heartbeat = 1;
 }
 
 void can_tid(void){
     flag_can = 1;
+}
+
+void datalog_tid(void){
+	flag_datalog = 1;
 }
 
 /**

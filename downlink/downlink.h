@@ -64,6 +64,7 @@ extern Serial debuglink;
 void downlink_init(void);
 void downlink_event(void);
 void downlink_periodic(void);
+void telemetry_periodic(void);
 
 void downlink_parse(char);
 void downlink_process_cmd(void);
@@ -83,6 +84,8 @@ extern DigitalIn ksi;
 int16_t boundNumberShort(int16_t num, int16_t lower, int16_t upper);
 uint16_t boundNumberUnsigShort(uint16_t num, uint16_t lower, uint16_t upper);
 uint8_t boundNumberUnsigByte(uint8_t num, uint8_t lower, uint8_t upper);
+
+void telemetry_cksum(uint16_t packet_length, uint8_t *buf, uint8_t *cksum0, uint8_t *cksum1 );
 
 //debug
 extern bool throttle_ok;

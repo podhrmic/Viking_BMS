@@ -172,6 +172,12 @@ class BmsState
         uint16_t eeprom_version;
         uint16_t sw_version;
 
+        // Cell data
+        int8_t max_cell_temp;
+        int8_t min_cell_temp;
+        uint16_t max_cell_volt;
+        uint16_t min_cell_volt;
+
         // Default constructor        
         BmsState(void);
 };

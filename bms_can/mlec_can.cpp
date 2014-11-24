@@ -238,8 +238,8 @@ void mlec_charger_periodic(RLECModule* module, CANMessage* msg6 ) {
     // standard charge mode
     if ((module->max_cell_volt >= BAT_CHARGE_CUTOFF) || (module->charge_status == 1)) {
         // switch off charger
-        if (hlim == 0) {
-            hlim = 1; 
+        if (hlim == 1) {
+            hlim = 0;
             module->charge_status = 1;    
         }
         
@@ -267,7 +267,7 @@ void mlec_charger_periodic(RLECModule* module, CANMessage* msg6 ) {
 //debuglink.printf("BALANCE CHARGE MODE\r\n");
  // COOL BALANCE MODE    
     // we dont want charging and balancing at the same time
-    hlim = 1; 
+    //hlim = 1;
     for (uint8_t j = 0; j<RLEC_CELLS;j++) {
         if (module->cell_voltage[j] > BAT_BALANCE_CUTOFF) {
             balance_resistors = balance_resistors + (0x1 << j);

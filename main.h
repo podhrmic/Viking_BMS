@@ -40,7 +40,7 @@
 #define RLEC_ZERO_CAPACITOR_VOLTAGE_FAULT 0x40 // nothing
 #define RLEC_CELL_1_VOLTAGE_FAULT 0x80 // critical
 
-#define T_MIN 5
+#define T_MIN 100 // s*10
 
 #define MAX_CELL_VOLT (4.2/RLEC_CAN_VOLTAGE_MULT)
 #define MIN_CELL_VOLT (2.5/RLEC_CAN_VOLTAGE_MULT)
@@ -62,6 +62,8 @@ extern DigitalOut fw_enable;
 extern float s1;
 extern float s2;
 extern float out;
+
+
 /*
 extern AnalogOut acc_out;
 extern AnalogIn throttle1;
@@ -75,6 +77,7 @@ inline void handle_periodic_tasks( void );
 inline void failsafe_periodic( void );
 inline void failsafe_shutdown( void );
 inline void failsafe_warning( void );
+inline void datalog_periodic(void);
 
 inline void charger_shutdown( void );
 inline void batlow_warning( void );
@@ -82,9 +85,11 @@ inline void batverylow_warning( void );
 inline void batcritical_warning( void );
 
 void telemetry_tid(void);
+void downlink_tid(void);
 void failsafe_tid(void);
 void can_tid(void);
 void heartbeat_tid(void);
+void datalog_tid(void);
 
 bool throttle_plausibility(float sig1, float sig2, float *out);
 inline float f_abs(float val);
