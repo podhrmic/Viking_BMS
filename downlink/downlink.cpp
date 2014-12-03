@@ -166,7 +166,7 @@ void downlink_init(void){
 				"MotorTemp, TorqueShud, TorqueCmd, TorqueFb, AnIn1, AnIn2, AnIn3, AnIn4, DigIn1, DigIn2, DigIn3, DigIn4, DigIn5, DigIn6, "
 				"MotorAngle, MotorSpeed, InvFreq, ResAng, PhasCur1, PhasCur2, PhasCur3, DcCur, DcVolt, OutputVolt, PabVolt, PbcVolt,"
 				"FluxCmd, FluxFb, IdFb, IqFb, IdCmd, IqCmd, Ref15, Ref25, Ref50, Sys12V, VSMstate, InvState, RelayState, InvMode, InvCmd, InvEn,"
-				"Direction, Fault1, Fault2, Fault3, Fault4, Fault5, Fault6, Fault7, Fault8, ModIdx, FluxRegOut, ThrottleIn1, ThrottleIn2, ThrottleOut"
+				"Direction, Fault1, Fault2, Fault3, Fault4, Fault5, Fault6, Fault7, Fault8, ModIdx, FluxRegOut, ThrottleIn1, ThrottleIn2, ThrottleOut, "
 				"MinCellTemp, MaxCellTemp, MinCellVolt, MaxCellVolt"
 				"\n");
 		fclose(fp);
