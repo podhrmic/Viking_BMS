@@ -43,7 +43,7 @@
 #include <stdint.h>
 
 #define DOWNLINK_BAUDRATE 9600//115200
-#define DEBUGLINK_BAUDRATE 115200
+#define DEBUGLINK_BAUDRATE 921600
 #define TELEMETRY_BAUDRATE 57600
 
 #define DOWNLINK_BUFFER_SIZE 128
@@ -70,6 +70,8 @@ void downlink_parse(char);
 void downlink_process_cmd(void);
 
 void debuglink_print_rlec(struct RLECModule*);
+
+void send_data_over_usb(void);
 
 string toHexString(uint8_t f);
 string toHexString(uint16_t f);

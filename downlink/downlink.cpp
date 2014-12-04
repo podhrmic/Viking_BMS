@@ -193,9 +193,9 @@ void downlink_periodic(void){
 
 	for (int i=0;i<NUM_RLECS;i++){
 		if (mlec.rlecsX[i].status == Active) {
-			debuglink.printf(">>> RLEC_ %i\r\n", i);
-			debuglink_print_rlec(&(mlec.rlecsX[i]));
-			debuglink.printf("\r\n");
+			//debuglink.printf(">>> RLEC_ %i\r\n", i);
+			//debuglink_print_rlec(&(mlec.rlecsX[i]));
+			//debuglink.printf("\r\n");
 
 			// check max cell temp
 			if (mlec.rlecsX[i].max_cell_temp > bms.max_cell_temp) {
@@ -218,11 +218,11 @@ void downlink_periodic(void){
 			}
 		}
 	}
-	debuglink.printf("Min cell tmp %i\r\n",bms.min_cell_temp);
-	debuglink.printf("Max cell tmp %i\r\n",bms.max_cell_temp);
-	debuglink.printf("Min cell volt %f\r\n",(float)bms.min_cell_volt*RLEC_CAN_VOLTAGE_MULT);
-	debuglink.printf("Max cell volt %f\r\n",(float)bms.max_cell_volt*RLEC_CAN_VOLTAGE_MULT);
-	debuglink.printf("\r\n");
+	//debuglink.printf("Min cell tmp %i\r\n",bms.min_cell_temp);
+	//debuglink.printf("Max cell tmp %i\r\n",bms.max_cell_temp);
+	//debuglink.printf("Min cell volt %f\r\n",(float)bms.min_cell_volt*RLEC_CAN_VOLTAGE_MULT);
+	//debuglink.printf("Max cell volt %f\r\n",(float)bms.max_cell_volt*RLEC_CAN_VOLTAGE_MULT);
+	//debuglink.printf("\r\n");
 
 	// Print BMS values
 	/*
@@ -237,7 +237,60 @@ void downlink_periodic(void){
 	debuglink.printf("\r\n");
 	debuglink.printf("\r\n");
 	*/
+
+	// send telemetry over USB cable
+	send_data_over_usb();
 }
+
+void send_data_over_usb(void) {
+    float f_timer = (float)bms.timer*0.003;
+    float f_sys_time = (float)bms.up_time/100;
+	debuglink.printf("%f, %f,"
+  			 // phase temp
+  			 "%i, %i, %i,"
+  			 // temps   rtd temp				motor temp
+  			 "%i, %i,  	%i, %i, %i, %i, %i,		%i,"
+  			 // torque
+  			 "%i, %i, %i,"
+  			 // analog in
+  			 "%i, %i, %i, %i,"
+  			// digitalin
+  			 "%u, %u, %u, %u, %u, %u,"
+  			 //motor info
+  			 "%i, %i, %i, %i,"
+  			 //current
+  			 "%i, %i, %i, 	%i,"
+  			 // Voltage
+  			 "%i, %i, %i, %i,"
+  			 // Flux
+  			 "%i, %i, %i, %i, %i, %i,"
+  			 // Internal Voltages
+  			 "%i, %i, %i, %i,"
+  			 //States
+  			 "%u, %u, %u, %u, %u, %u, %u,"
+  			 // Faults (8bytes)
+  			 "%u, %u, %u, %u, %u, %u, %u, %u,"
+  			 //Various
+  			 "%i, %i,"
+  			 // Throttle input, min cell temp, max cell temp, min cell volt
+  			 "%f, %f, %f, %i, %i, %u, %u\n",
+  			 f_timer, f_sys_time,
+  			 bms.phase_temp[0],bms.phase_temp[1],bms.phase_temp[2],
+  			 bms.gate_temp, bms.board_temp, bms.rtd_temp[0],bms.rtd_temp[1],bms.rtd_temp[2],bms.rtd_temp[3],bms.rtd_temp[4],bms.motor_temp,
+  			 bms.torque_shud, bms.torque_cmd,bms.torque_fb,
+  			 bms.analog_in[0], bms.analog_in[1], bms.analog_in[2], bms.analog_in[3],
+  			 bms.digital_in[0], bms.digital_in[1], bms.digital_in[2], bms.digital_in[3], bms.digital_in[4], bms.digital_in[5],
+  			 bms.motor_angle, bms.motor_speed, bms.inv_freq, bms.resolver_angle,
+  			 bms.phase_current[0], bms.phase_current[1], bms.phase_current[2], bms.dc_current,
+  			 bms.dc_voltage, bms.output_volt, bms.p_ab_volt, bms.p_bc_volt,
+  			 bms.flux_cmd, bms.flux_fb, bms.id_fb, bms.iq_fb, bms.id_cmd, bms.iq_cmd,
+  			 bms.ref_1_5, bms.ref_2_5, bms.ref_5_0, bms.sys_12v,
+  			 bms.vsm_state, bms.inv_state, bms.relay_state, bms.inv_mode, bms.inv_cmd, bms.inv_enable, bms.direction,
+  			 bms.faults[0],bms.faults[1],bms.faults[2],bms.faults[3],bms.faults[4],bms.faults[5],bms.faults[6],bms.faults[7],
+  			 bms.modulation_index, bms.flux_reg_out,
+  			 s1,s2,out, bms.min_cell_temp, bms.max_cell_temp, bms.min_cell_volt, bms.max_cell_volt);
+}
+
 
 /**
  * Telemetry periodic
